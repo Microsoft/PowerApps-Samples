@@ -14,6 +14,7 @@
 import {IInputs, IOutputs} from "./generated/ManifestTypes";
 
 import DataSetInterfaces = ComponentFramework.PropertyHelper.DataSetApi;
+import { table } from "console";
 type DataSet = ComponentFramework.PropertyTypes.DataSet;
 
 
@@ -33,18 +34,23 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 		// Table element created as part of this control's table
 		private dataTable: HTMLTableElement;
 
-		// Button element created as part of this control
-		private loadNextPageButton: HTMLButtonElement;
+		private getValueResultDiv: HTMLDivElement;
 
-		// Button element created as part of this control
-		private loadPrevPageButton: HTMLButtonElement;
-
-		private getValueResultLabel: HTMLLabelElement;
+		private pagingDiv: HTMLDivElement;
 
 		private selectedRecord: DataSetInterfaces.EntityRecord;
 
 		private selectedRecords: {[id: string]: boolean} = {};
 
+		private displayPropertySetColumns = true;
+
+		private targetEntityDiv: HTMLDivElement;
+
+		private sortedColumn = "";
+
+		private direction: DataSetInterfaces.Types.SortDirection = 0;
+
+		private logs: string[] = [];
 		/**
 		 * Empty constructor.
 		 */
@@ -74,33 +80,25 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 			// Create data table container div.
 			this.dataTable = document.createElement("table");
 			this.dataTable.classList.add("SimpleTable_Table_Style");
-
-			this.loadPrevPageButton = document.createElement("button");
-			this.loadPrevPageButton.setAttribute("type", "button");
-			this.loadPrevPageButton.innerText = context.resources.getString("TSPropertySetTableControl_LoadPrev_ButtonLabel");
-			this.loadPrevPageButton.classList.add(Button_Disabled_style);
-			this.loadPrevPageButton.classList.add("Button_Style");
-			this.loadPrevPageButton.addEventListener("click", this.onLoadPrevButtonClick.bind(this));
-
-			this.loadNextPageButton = document.createElement("button");
-			this.loadNextPageButton.setAttribute("type", "button");
-			this.loadNextPageButton.innerText = context.resources.getString("TSPropertySetTableControl_LoadNext_ButtonLabel");
-			this.loadNextPageButton.classList.add(Button_Disabled_style);
-			this.loadNextPageButton.classList.add("Button_Style");
-			this.loadNextPageButton.addEventListener("click", this.onLoadNextButtonClick.bind(this));
-
+			this.pagingDiv = this.createPagingDiv(context);
+			this.targetEntityDiv = document.createElement("div");
+			this.targetEntityDiv.classList.add("StatusDiv＿Style");
 
 			// Create main table container div. 
 			this.mainContainer = document.createElement("div");
 
 			// Adding the main table and loadNextPage button created to the container DIV.
-			this.mainContainer.appendChild(this.createGetValueDiv());
-			this.mainContainer.appendChild(this.loadPrevPageButton);
-			this.mainContainer.appendChild(this.loadNextPageButton);
+			this.mainContainer.appendChild(this.createSearchBar(context));
+			//this.mainContainer.appendChild(refreshTestButton);
 			this.mainContainer.appendChild(this.dataTable);
+			this.mainContainer.appendChild(this.pagingDiv);
 			this.mainContainer.classList.add("main-container");
 			container.appendChild(this.mainContainer);
 		}
+
+	private _refresh() {
+		this.contextObj.parameters.sampleDataSet.refresh();
+	}
 
 	/**
 	 * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
@@ -108,11 +106,9 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 	 */
 	public updateView(context: ComponentFramework.Context<IInputs>): void {
 		this.contextObj = context;
-		this.toggleLoadMoreButtonWhenNeeded(context.parameters.sampleDataSet);
-		this.toggleLoadPreviousButtonWhenNeeded(context.parameters.sampleDataSet);
-		
+		const param = context.parameters.sampleDataSet;
+		this.targetEntityDiv.innerText = `${JSON.stringify(context.updatedProperties)} | ${param.getTargetEntityType()} | ${param.loading ? "loading" : "done"}`;
 		if (!context.parameters.sampleDataSet.loading) {
-
 			// Get sorted columns on View
 			let columnsOnView = this.getSortedColumnsOnView(context);
 			if (!columnsOnView || columnsOnView.length === 0) {
@@ -130,9 +126,11 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 
 			this.dataTable.appendChild(this.createTableHeader(columnsOnView, columnWidthDistribution));
 			this.dataTable.appendChild(this.createTableBody(columnsOnView, columnWidthDistribution, context.parameters.sampleDataSet));
-
-			this.dataTable.parentElement!.style.height = (context.mode.allocatedHeight - 50) + "px";
+			this.dataTable.style.height = (context.mode.allocatedHeight - 160) + "px";
 		}
+		this.pagingDiv.remove();
+		this.pagingDiv = this.createPagingDiv(context);
+		this.mainContainer.appendChild(this.pagingDiv);
 	}
 
 	/**
@@ -154,8 +152,8 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 		const getValueDiv = document.createElement("div");
 		const inputBox = document.createElement("input");
 		const getValueButton = document.createElement("button");
-		const resultText = document.createElement("label");
-
+		const addColumnButton = document.createElement("button");
+		const resultDiv = document.createElement("div");
 		const _this = this; 
 
 		inputBox.id = "getValueInputBox";
@@ -163,17 +161,50 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 		inputBox.classList.add("GetValueInput_Style");
 
 		getValueButton.innerText = "GetValue";		
+		getValueButton.classList.add("Button_Style");
 		getValueButton.onclick = () => {
 			if (_this.selectedRecord) {
-				resultText.innerText = _this.selectedRecord.getFormattedValue(inputBox.value);
+				if (this.getValueResultDiv) {
+					this.getValueResultDiv.innerHTML = "";
+				}
+				const alias = inputBox.value;
+				const value = _this.selectedRecord.getValue(alias);
+				const formattedValue = _this.selectedRecord.getFormattedValue(alias);
+				const recordId = _this.selectedRecord.getRecordId();
+				const namedReference = _this.selectedRecord.getNamedReference();
+				const content1 = document.createElement("div");
+				const content2 = document.createElement("div");
+				const content3 = document.createElement("div");
+				const content4 = document.createElement("div");
+				content1.innerText= `Value: ${value}`;
+				content2.innerText= `FormattedValue: ${formattedValue}`;
+				content3.innerText= `RecordId: ${recordId}`;
+				content4.innerText= `NamedReference: ${JSON.stringify(namedReference)}`;
+				resultDiv.appendChild(content1);
+				resultDiv.appendChild(content2);
+				resultDiv.appendChild(content3);
+				resultDiv.appendChild(content4);
 			}
-		}
-		resultText.innerText = "Select a row first";
-		resultText.classList.add("GetValueResult_Style");
-		this.getValueResultLabel = resultText;
+		};
+
+		addColumnButton.innerText = "AddColumn";
+		addColumnButton.classList.add("Button_Style");
+		addColumnButton.onclick = () => {
+			if (inputBox.value) {
+				_this.contextObj.parameters.sampleDataSet.addColumn?.(inputBox.value);
+				_this._refresh();
+			}
+		};
+
+		resultDiv.classList.add("GetValueResult_Style");
+		resultDiv.innerText = "Select a row first";
+		this.getValueResultDiv = resultDiv;
 		getValueDiv.appendChild(inputBox);
 		getValueDiv.appendChild(getValueButton);
-		getValueDiv.appendChild(resultText);
+		getValueDiv.appendChild(addColumnButton);
+		getValueDiv.appendChild(resultDiv);
+		//getValueDiv.appendChild(newValueInput);
+		//getValueDiv.appendChild(saveValueButton);
 		return getValueDiv;
 	}
 
@@ -211,19 +242,21 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 		let widthDistribution: string[] = [];
 
 		// Considering need to remove border & padding length
-		let totalWidth: number = context.mode.allocatedWidth;
+		let totalWidth: number = context.mode.allocatedWidth - 60;
 		let widthSum = 0;
-
+		let defaultSortColumn: string = "";
 		columnsOnView.forEach(function (columnItem) {
 			widthSum += columnItem.visualSizeFactor;
+			defaultSortColumn = defaultSortColumn || columnItem.name;
 		});
+		this.sortedColumn = this.sortedColumn || defaultSortColumn;
 
 		let remainWidth: number = totalWidth;
 
 		columnsOnView.forEach(function (item, index) {
 			let widthPerCell = "";
 			if (index !== columnsOnView.length - 1) {
-				let cellWidth = Math.round((item.visualSizeFactor / widthSum) * totalWidth);
+				let cellWidth = Math.floor((item.visualSizeFactor / widthSum) * totalWidth);
 				remainWidth = remainWidth - cellWidth;
 				widthPerCell = cellWidth + "px";
 			}
@@ -238,37 +271,58 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 	}
 
 	private createTableHeader(columnsOnView: DataSetInterfaces.Column[], widthDistribution: string[]): HTMLTableSectionElement {
-
 		let tableHeader: HTMLTableSectionElement = document.createElement("thead");
 		let tableHeaderRow: HTMLTableRowElement = document.createElement("tr");
 		tableHeaderRow.classList.add("SimpleTable_TableRow_Style");
+		const displayPropertySetColumns = this.displayPropertySetColumns;
+		const _this = this;
+		const headerSelectedColumn = document.createElement("th");
+		headerSelectedColumn.width = "60px";
+		headerSelectedColumn.innerText = "Select";
+		headerSelectedColumn.classList.add("SimpleTable_TableHeader_Selected_Style");
+		tableHeaderRow.appendChild(headerSelectedColumn);
+			
 		columnsOnView.forEach(function (columnItem, index) {
-			let tableHeaderCell = document.createElement("th");
-			let innerDiv = document.createElement("div");
-			innerDiv.classList.add("SimpleTable_TableCellInnerDiv_Style");
-			innerDiv.style.maxWidth = widthDistribution[index];
-			let columnDisplayName: string;
-			if (columnItem.order < 0) {
-				tableHeaderCell.classList.add("SimpleTable_TableHeader_PropertySet_Style");
-				columnDisplayName = columnItem.displayName + "(propertySet)";
-			} else {
-				tableHeaderCell.classList.add("SimpleTable_TableHeader_Style");
-				columnDisplayName = columnItem.displayName;
+			if (columnItem.order >= 0 || displayPropertySetColumns) {
+				let tableHeaderCell = document.createElement("th");
+				let innerDiv = document.createElement("div");
+				tableHeaderCell.width = widthDistribution[index];
+				innerDiv.classList.add("SimpleTable_TableCellInnerDiv_Style");
+				innerDiv.style.maxWidth = widthDistribution[index];
+				let columnDisplayName: string;
+				if (columnItem.order < 0) {
+					tableHeaderCell.classList.add("SimpleTable_TableHeader_PropertySet_Style");
+					columnDisplayName = columnItem.displayName + "(propertySet)";
+				} else {
+					tableHeaderCell.classList.add("SimpleTable_TableHeader_Style");
+					columnDisplayName = columnItem.displayName;
+				}
+				if (columnItem.name === _this.sortedColumn) {
+					columnDisplayName += _this.direction === 1 ? " ↓" : " ↑";
+				}
+				innerDiv.innerText = columnDisplayName;
+
+				tableHeaderCell.appendChild(innerDiv);
+				tableHeaderCell.addEventListener("click", (() => {
+					if (_this.sortedColumn !== columnItem.name) {
+						_this.sortedColumn = columnItem.name;
+					} else {
+						_this.direction = (1 - _this.direction) as DataSetInterfaces.Types.SortDirection;
+					}
+					_this.contextObj.parameters.sampleDataSet.refresh();
+				}).bind(_this));
+				tableHeaderRow.appendChild(tableHeaderCell);
 			}
-			innerDiv.innerText = columnDisplayName;
-
-			tableHeaderCell.appendChild(innerDiv);
-			tableHeaderRow.appendChild(tableHeaderCell);
 		});
-
 		tableHeader.appendChild(tableHeaderRow);
 		return tableHeader;
 	}
 
 	private createTableBody(columnsOnView: DataSetInterfaces.Column[], widthDistribution: string[], gridParam: DataSet): HTMLTableSectionElement {
-
-		let tableBody: HTMLTableSectionElement = document.createElement("tbody");
-
+		const tableBody: HTMLTableSectionElement = document.createElement("tbody");
+		const displayPropertySetColumns = this.displayPropertySetColumns;
+		const selectedRecordIds = this.contextObj.parameters.sampleDataSet.getSelectedRecordIds();
+		const _this = this;
 		if (gridParam.sortedRecordIds.length > 0) {
 			for (let currentRecordId of gridParam.sortedRecordIds) {
 
@@ -278,19 +332,27 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 
 				// Set the recordId on the row dom, this is the simplest way to help us track which record has been clicked.
 				tableRecordRow.setAttribute(RowRecordId, gridParam.records[currentRecordId].getRecordId());
-
+				const selected = selectedRecordIds?.indexOf(currentRecordId) > -1;
+				let tableSelectedCell = document.createElement("td");
+				tableSelectedCell.width = "64px";
+				if (selected) {
+					tableSelectedCell.innerText = "+";
+				}
+				tableRecordRow.appendChild(tableSelectedCell);
 				columnsOnView.forEach(function (columnItem, index) {
-					let tableRecordCell = document.createElement("td");
-					tableRecordCell.classList.add("SimpleTable_TableCell_Style");
-					let innerDiv = document.createElement("div");
-					innerDiv.classList.add("SimpleTable_TableCellInnerDiv_Style");
-					innerDiv.style.width = widthDistribution[index];
-					// Currently there is a bug in canvas preventing retrieving value using alias for property set columns.
-					// In this sample, we use the column's actual attribute name to retrieve the formatted value to work around the issue
-					// columnItem.alias should be used after bug is addressed
-					innerDiv.innerText = gridParam.records[currentRecordId].getFormattedValue(columnItem.name);
-					tableRecordCell.appendChild(innerDiv);
-					tableRecordRow.appendChild(tableRecordCell);
+					if (columnItem.order >= 0 || displayPropertySetColumns) {
+						let tableRecordCell = document.createElement("td");
+						tableRecordCell.classList.add("SimpleTable_TableCell_Style");
+						let innerLink = document.createElement("a");
+						innerLink.innerText = gridParam.records[currentRecordId].getFormattedValue(columnItem.alias);
+						let innerDiv = document.createElement("div");
+						innerDiv.classList.add("SimpleTable_TableCellInnerDiv_Style");
+						innerDiv.style.width = widthDistribution[index];
+						innerDiv.appendChild(innerLink);
+						tableRecordCell.appendChild(innerDiv);
+						tableRecordRow.appendChild(tableRecordCell);
+						innerLink.addEventListener("click", _this.onLinkClick.bind(_this));
+					}
 				});
 
 				tableBody.appendChild(tableRecordRow);
@@ -320,7 +382,9 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 		if (rowRecordId) {
 			const record = this.contextObj.parameters.sampleDataSet.records[rowRecordId];
 			this.selectedRecord = record;
-			this.getValueResultLabel.innerText = "";
+			if (this.getValueResultDiv) {
+				this.getValueResultDiv.innerHTML = "";
+			}
 			this.selectedRecords[rowRecordId] = !this.selectedRecords[rowRecordId];
 			const selectedRecordsArray = [];
 			for (const recordId in this.selectedRecords) {
@@ -329,53 +393,137 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 				}
 			}
 			this.contextObj.parameters.sampleDataSet.setSelectedRecordIds(selectedRecordsArray);
+			this.contextObj.factory.requestRender();
+		}
+	}
+
+	private onLinkClick(event: Event): void {
+		let rowElement = (event.currentTarget as HTMLTableRowElement);
+		let rowRecordId = rowElement.getAttribute(RowRecordId);
+		if (rowRecordId) {
+			const record = this.contextObj.parameters.sampleDataSet.records[rowRecordId];
+			this.selectedRecord = record;
+			if (this.getValueResultDiv) {
+				this.getValueResultDiv.innerHTML = "";
+			}
+			this.selectedRecords[rowRecordId] = !this.selectedRecords[rowRecordId];
+			const selectedRecordsArray = [];
+			for (const recordId in this.selectedRecords) {
+				if (this.selectedRecords[recordId]) {
+					selectedRecordsArray.push(recordId);
+				}
+			}
 			this.contextObj.parameters.sampleDataSet.openDatasetItem(record.getNamedReference());
 		}
 	}
 
 	/**
-	 * Toggle 'LoadMore' button when needed
-	 */
-	private toggleLoadMoreButtonWhenNeeded(gridParam: DataSet): void {
-
-		if (gridParam.paging.hasNextPage) {
-			this.loadNextPageButton.disabled = false;
-		} else if (!gridParam.paging.hasNextPage) {
-			this.loadNextPageButton.disabled = true;
-		}
-
-	}
-
-	/**
-	 * Toggle 'LoadMore' button when needed
-	 */
-	private toggleLoadPreviousButtonWhenNeeded(gridParam: DataSet): void {
-
-		if (gridParam.paging.hasPreviousPage) {
-			this.loadPrevPageButton.disabled = false;
-		} else if (!gridParam.paging.hasPreviousPage) {
-			this.loadPrevPageButton.disabled = true;
-		}
-
-	}
-
-	/**
-	 * 'LoadMore' Button Event handler when load more button clicks
+	 * 'Load Next' Button Event handler when load more button clicks
 	 * @param event
 	 */
 	private onLoadNextButtonClick(event: Event): void {
 		this.contextObj.parameters.sampleDataSet.paging.loadNextPage();
-		this.toggleLoadMoreButtonWhenNeeded(this.contextObj.parameters.sampleDataSet);
-		this.toggleLoadPreviousButtonWhenNeeded(this.contextObj.parameters.sampleDataSet);
 	}
 
 	/**
-	 * 'LoadPrevous' Button Event handler when load more button clicks
+	 * 'Load Prevous' Button Event handler when load more button clicks
 	 * @param event
 	 */
 	private onLoadPrevButtonClick(event: Event): void {
 		this.contextObj.parameters.sampleDataSet.paging.loadPreviousPage();
-		this.toggleLoadPreviousButtonWhenNeeded(this.contextObj.parameters.sampleDataSet);
-		this.toggleLoadMoreButtonWhenNeeded(this.contextObj.parameters.sampleDataSet);
+	}
+
+	private createPagingDiv(context: ComponentFramework.Context<IInputs>) {
+		let container = document.createElement("div");
+		let loadPrevPageButton: HTMLButtonElement;
+		let loadNextPageButton: HTMLButtonElement;
+		let setPageSizeButton: HTMLButtonElement;
+		let setPageInput: HTMLInputElement;
+		loadPrevPageButton = document.createElement("button");
+		loadPrevPageButton.setAttribute("type", "button");
+		loadPrevPageButton.innerText = context.resources.getString("TSPropertySetTableControl_LoadPrev_ButtonLabel");
+		loadPrevPageButton.classList.add("Button_Style");
+		loadPrevPageButton.addEventListener("click", this.onLoadPrevButtonClick.bind(this));
+		loadPrevPageButton.disabled = !context.parameters.sampleDataSet.paging.hasPreviousPage;
+		if (!context.parameters.sampleDataSet.paging.hasPreviousPage) {
+			loadPrevPageButton.classList.add(Button_Disabled_style);
+		}
+
+		loadNextPageButton = document.createElement("button");
+		loadNextPageButton.setAttribute("type", "button");
+		loadNextPageButton.innerText = context.resources.getString("TSPropertySetTableControl_LoadNext_ButtonLabel");
+		loadNextPageButton.classList.add(Button_Disabled_style);
+		loadNextPageButton.classList.add("Button_Style");
+		loadNextPageButton.addEventListener("click", this.onLoadNextButtonClick.bind(this));
+		loadNextPageButton.disabled = !context.parameters.sampleDataSet.paging.hasNextPage;
+		if (!context.parameters.sampleDataSet.paging.hasNextPage) {
+			loadNextPageButton.classList.add(Button_Disabled_style);
+		}
+		setPageInput = document.createElement("input");
+		setPageInput.classList.add("SetPageSizeInput_style");
+		setPageInput.id = "setPageInput";
+		setPageSizeButton = document.createElement("button");
+		setPageSizeButton.setAttribute("type", "button");
+		setPageSizeButton.innerText = context.resources.getString("TSPropertySetTableControl_SetPageSize_ButtonLabel");
+		setPageSizeButton.classList.add("Button_Style");
+		setPageSizeButton.addEventListener("click", () => {
+			const pageSize = parseInt(setPageInput.value || "25", 10);
+			context.parameters.sampleDataSet.paging.setPageSize(pageSize);
+			context.parameters.sampleDataSet.refresh();
+		});
+
+		
+		container.appendChild(loadPrevPageButton);
+		container.appendChild(loadNextPageButton);
+		container.appendChild(setPageInput);
+		container.appendChild(setPageSizeButton);
+
+		return container;
+	}
+
+	private createSearchBar(context: ComponentFramework.Context<IInputs>) {
+		const columns = this.getSortedColumnsOnView(context);
+		let container = document.createElement("div");
+		let input = document.createElement("input");
+		input.placeholder = "Search records";
+		input.classList.add("GetValueInput_Style");
+		input.id = "searchBar";
+		let button = document.createElement("button");
+		button.classList.add("Button_Style");
+		button.innerHTML = "Search"
+		button.addEventListener("click", (() => {
+			let conditionsArray: DataSetInterfaces.ConditionExpression[] = [];
+			let searchString = input.value;
+			for (let i = 0; i < columns.length; i++) {
+				const column = columns[i];
+				if (!column.isHidden && column.dataType === "SingleLine.Text" && column.name) {
+					const condition: DataSetInterfaces.ConditionExpression = {
+						attributeName: column.name,
+						conditionOperator: 6,
+						value: searchString + "%",
+					};
+					conditionsArray.push(condition);
+				}
+			}
+			this.contextObj.parameters.sampleDataSet.filtering.setFilter({
+				conditions: conditionsArray,
+				filterOperator: 1,
+			});
+			if (this.sortedColumn) {
+				this.contextObj.parameters.sampleDataSet.sorting = [{
+					sortDirection: this.direction,
+					name: this.sortedColumn,
+				}];
+			}
+			
+			this.contextObj.parameters.sampleDataSet.refresh();
+		}).bind(this));
+		const firstDiv = document.createElement("div");
+		firstDiv.appendChild(input);
+		firstDiv.appendChild(button);
+		firstDiv.appendChild(this.targetEntityDiv);
+		container.appendChild(firstDiv);
+		container.appendChild(this.createGetValueDiv());	
+		return container;
 	}
 }

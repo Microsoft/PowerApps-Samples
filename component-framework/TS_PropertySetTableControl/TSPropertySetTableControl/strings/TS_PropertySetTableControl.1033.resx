@@ -118,11 +118,15 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="TSPropertySetTableControl_LoadNext_ButtonLabel" xml:space="preserve">
-    <value>Load Next</value>
+    <value>Next</value>
     <comment>Label for TSPropertySetTableControl's Load Next Paging Button</comment>
   </data>
   <data name="TSPropertySetTableControl_LoadPrev_ButtonLabel" xml:space="preserve">
-    <value>Load Prev</value>
+    <value>Prev</value>
+    <comment>Label for TSPropertySetTableControl's Load Previous Paging Button</comment>
+  </data>
+  <data name="TSPropertySetTableControl_SetPageSize_ButtonLabel" xml:space="preserve">
+    <value>Set page size</value>
     <comment>Label for TSPropertySetTableControl's Load Previous Paging Button</comment>
   </data>
   <data name="TSPropertySetTableControl_No_Record_Found" xml:space="preserve">
@@ -151,10 +155,11 @@
   </data>
     <data name="Property_Display_Key2" xml:space="preserve">
     <value>Sample Property Set 2</value>
-    <comment>Sample Property Set 22</comment>
+    <comment>Sample Property Set 2</comment>
   </data>
   <data name="Property_Desc_Key2" xml:space="preserve">
     <value>This is a sample property set 2 allows to retrieve a data field using alias.</value>
     <comment>Sample Property Set 2</comment>
   </data>
+  
 </root>
