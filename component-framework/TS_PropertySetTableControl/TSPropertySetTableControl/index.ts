@@ -36,6 +36,8 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 
 		private getValueResultDiv: HTMLDivElement;
 
+		private pagingDiv: HTMLDivElement;
+
 		private selectedRecord: DataSetInterfaces.EntityRecord;
 
 		private selectedRecords: {[id: string]: boolean} = {};
@@ -78,6 +80,7 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 			// Create data table container div.
 			this.dataTable = document.createElement("table");
 			this.dataTable.classList.add("SimpleTable_Table_Style");
+			this.pagingDiv = this.createPagingDiv(context);
 			this.targetEntityDiv = document.createElement("div");
 			this.targetEntityDiv.classList.add("StatusDiv＿Style");
 
@@ -88,7 +91,7 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 			this.mainContainer.appendChild(this.createSearchBar(context));
 			//this.mainContainer.appendChild(refreshTestButton);
 			this.mainContainer.appendChild(this.dataTable);
-			this.mainContainer	.appendChild(this.createPagingDiv(context));
+			this.mainContainer.appendChild(this.pagingDiv);
 			this.mainContainer.classList.add("main-container");
 			container.appendChild(this.mainContainer);
 		}
@@ -103,7 +106,8 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 	 */
 	public updateView(context: ComponentFramework.Context<IInputs>): void {
 		this.contextObj = context;
-		this.targetEntityDiv.innerText = `UpdatedProperties ${JSON.stringify(context.updatedProperties)} | ${context.parameters.sampleDataSet.getTargetEntityType()} | ${context.parameters.sampleDataSet.loading ? "loading" : "done"}`;
+		const param = context.parameters.sampleDataSet;
+		this.targetEntityDiv.innerText = `${JSON.stringify(context.updatedProperties)} | ${param.getTargetEntityType()} | ${param.loading ? "loading" : "done"} | ${param.getTitle() ? param.getTitle() + "(" + param.getViewId() + ")" : ""})`;
 		if (!context.parameters.sampleDataSet.loading) {
 			// Get sorted columns on View
 			let columnsOnView = this.getSortedColumnsOnView(context);
@@ -124,6 +128,9 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 			this.dataTable.appendChild(this.createTableBody(columnsOnView, columnWidthDistribution, context.parameters.sampleDataSet));
 			this.dataTable.style.height = (context.mode.allocatedHeight - 160) + "px";
 		}
+		this.pagingDiv.remove();
+		this.pagingDiv = this.createPagingDiv(context);
+		this.mainContainer.appendChild(this.pagingDiv);
 	}
 
 	/**
@@ -435,16 +442,23 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 		loadPrevPageButton = document.createElement("button");
 		loadPrevPageButton.setAttribute("type", "button");
 		loadPrevPageButton.innerText = context.resources.getString("TSPropertySetTableControl_LoadPrev_ButtonLabel");
-		loadPrevPageButton.classList.add(Button_Disabled_style);
 		loadPrevPageButton.classList.add("Button_Style");
 		loadPrevPageButton.addEventListener("click", this.onLoadPrevButtonClick.bind(this));
-		loadPrevPageButton.disabled = context.parameters.sampleDataSet.paging.hasPreviousPage;
+		loadPrevPageButton.disabled = !context.parameters.sampleDataSet.paging.hasPreviousPage;
+		if (!context.parameters.sampleDataSet.paging.hasPreviousPage) {
+			loadPrevPageButton.classList.add(Button_Disabled_style);
+		}
+
 		loadNextPageButton = document.createElement("button");
 		loadNextPageButton.setAttribute("type", "button");
 		loadNextPageButton.innerText = context.resources.getString("TSPropertySetTableControl_LoadNext_ButtonLabel");
 		loadNextPageButton.classList.add(Button_Disabled_style);
 		loadNextPageButton.classList.add("Button_Style");
 		loadNextPageButton.addEventListener("click", this.onLoadNextButtonClick.bind(this));
+		loadNextPageButton.disabled = !context.parameters.sampleDataSet.paging.hasNextPage;
+		if (!context.parameters.sampleDataSet.paging.hasNextPage) {
+			loadNextPageButton.classList.add(Button_Disabled_style);
+		}
 		setPageInput = document.createElement("input");
 		setPageInput.classList.add("SetPageSizeInput_style");
 		setPageInput.id = "setPageInput";
@@ -455,9 +469,9 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 		setPageSizeButton.addEventListener("click", () => {
 			const pageSize = parseInt(setPageInput.value || "25", 10);
 			context.parameters.sampleDataSet.paging.setPageSize(pageSize);
+			context.parameters.sampleDataSet.refresh();
 		});
 
-		loadPrevPageButton.disabled = context.parameters.sampleDataSet.paging.hasNextPage;
 		
 		container.appendChild(loadPrevPageButton);
 		container.appendChild(loadNextPageButton);

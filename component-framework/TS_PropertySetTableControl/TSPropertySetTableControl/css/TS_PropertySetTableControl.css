@@ -113,19 +113,19 @@
 
 
 .SampleNamespace\.TSPropertySetTableControl button.LoadPageButton_Disabled_Style{
-    background-color:#999999;
+    background-color:#999999 !important;
 }
 .SampleNamespace\.TSPropertySetTableControl button.LoadPageButton_Disabled_Style:hover{
-    background-color:#999999;
+    background-color:#999999 !important;
 }
 
 .SampleNamespace\.TSPropertySetTableControl input.GetValueInput_Style {
-    width: 200px;
+    width: 150px;
     margin: 5px;
 }
 
 .SampleNamespace\.TSPropertySetTableControl label.GetValueResult_Style {
-    width: 200px;
+    width: 150px;
     margin: 5px;
 }
 
