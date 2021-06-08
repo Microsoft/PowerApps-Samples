@@ -107,7 +107,7 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 	public updateView(context: ComponentFramework.Context<IInputs>): void {
 		this.contextObj = context;
 		const param = context.parameters.sampleDataSet;
-		this.targetEntityDiv.innerText = `${JSON.stringify(context.updatedProperties)} | ${param.getTargetEntityType()} | ${param.loading ? "loading" : "done"} | ${param.getTitle() ? param.getTitle() + "(" + param.getViewId() + ")" : ""})`;
+		this.targetEntityDiv.innerText = `${JSON.stringify(context.updatedProperties)} | ${param.getTargetEntityType()} | ${param.loading ? "loading" : "done"}`;
 		if (!context.parameters.sampleDataSet.loading) {
 			// Get sorted columns on View
 			let columnsOnView = this.getSortedColumnsOnView(context);
