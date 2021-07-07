@@ -75,6 +75,12 @@ function subscribeToMakerSessionEvents() {
         appId = appInfo.appId;
         console.log("App is published. AppId: " + appInfo.appId);
     });
+
+    // App signalled to the host via a host definition WADL set
+    // @ts-ignore TODO: remove once upstream Authoring SDK has event merged
+    makerSession.appSignalled.subscribe((appInfo) => {
+	console.log("App signalled host. Info: " + JSON.stringify(appInfo));
+    });
 }
 
 function editApp(): void {
