@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>1</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>1</isdefault>
+    <savedqueryid>{f1f915a9-28c3-4e2a-8b12-de68ce6e6f5c}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="lcs_action" select="1" icon="1" preview="1">
+        <row name="result" id="lcs_activitylogid">
+          <cell name="lcs_action" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>4</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="lcs_activitylog">
+          <attribute name="lcs_activitylogid" />
+          <attribute name="lcs_action" />
+          <attribute name="createdon" />
+          <order attribute="lcs_action" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="0" />
+          </filter>
+          <filter type="or" isquickfindfields="1">
+            <condition attribute="lcs_action" operator="like" value="{0}" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0.0.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Quick Find Active ActivityLogs" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>

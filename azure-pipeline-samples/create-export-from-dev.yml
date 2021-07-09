@@ -1,0 +1,67 @@
+# Get solution and commit 
+# to the same Git repository and branch used when pipeline
+# is triggered
+# 
+# PowerPlatformSPN values are Service connections which are defined in 
+# Service Connections under Project Settings using the Power Platform connection type and a Service Principal
+# https://docs.microsoft.com/en-us/power-platform/alm/devops-build-tools#configure-service-connections-using-a-service-principal
+
+trigger:
+  - main
+  - develop
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  # Git command output is done on stderr, not stdout
+  GIT_REDIRECT_STDERR: 2>&1
+  # Solution Details
+  Solution.Name: 'SampleApp'
+  Solution.Path: '$(Pipeline.Workspace)/s/Solution'
+
+
+steps:
+- checkout: self
+  clean: true
+  persistCredentials: true
+
+- pwsh: write-host "##vso[task.setvariable variable=Build.SourceBranchFullName]$($env:build_sourceBranch.substring($env:build_sourceBranch.indexOf('/', 5) + 1))"
+  displayName: 'Create Build.SourceBranchFullName environment variable' 
+
+- task: PowerPlatformToolInstaller@0
+  displayName: 'Power Platform Tool Installer'
+  inputs:
+    DefaultVersion: true
+
+- task: PowerPlatformExportSolution@0
+  displayName: 'Export Solution (unmanaged)'
+  inputs:
+    authenticationType: 'PowerPlatformSPN'
+    PowerPlatformSPN: 'like10-dev'
+    SolutionName: '$(Solution.Name)'
+    SolutionOutputFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name).zip'
+    Managed: false
+
+- task: PowerPlatformUnpackSolution@0
+  displayName: 'Unpack solution'
+  inputs:
+    SolutionInputFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name).zip'
+    SolutionTargetFolder: '$(Solution.Path)'
+
+- pwsh: |
+   git config user.email "agent@dev.azure.com"
+   git config user.name "Azure Pipeline"
+   git checkout -b $env:Build_SourceBranchFullName
+   if (git status -s)
+   {
+     write-host "commit all changes"
+     git add --all
+     git commit -m "solution source updated by $env:BUILD_BUILDNUMBER [skip ci]"
+     write-host "push changes to repo"
+     git push origin $env:Build_SourceBranchFullName
+   }
+   else
+   {
+     write-host "Nothing to push, no changes detected"
+   }
+  displayName: "Commit/Push changes to Git repo"

@@ -1,0 +1,181 @@
+# multi-stage yaml pipelines
+# build-test-staging-prod pipeline
+
+variables:
+  Version.Revision: $[counter(format('{0:yyyyMMdd}', pipeline.startTime), 0)]
+  Version.Major: 1
+  Version.Minor: 0
+  # Solution Details
+  Solution.Name: 'SampleApp'
+  Solution.Path: '$(Pipeline.Workspace)/s/Solution'
+  Solution.Version: '0.0.0.0'
+
+name: '$(Build.DefinitionName) $(Version.Major).$(Version.Minor).$(Date:yy)$(DayOfYear).$(Version.Revision)'
+
+# Only run against main
+trigger:
+- main
+
+# Don't run against pull requests (PRs)
+pr: none
+
+stages:
+- stage: build
+  jobs:
+  - job: package_managed_solution
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+      - pwsh: |
+          $VersionString = [regex]::matches($Env:BUILD_BUILDNUMBER,"\d+\.\d+\.\d+\.\d+")
+          Write-Host "##vso[task.setvariable variable=Solution.Version;]$VersionString"
+        displayName: 'Get Version String'
+
+      - task: PowerPlatformToolInstaller@0
+        displayName: 'Power Platform Tool Installer'
+        inputs:
+          DefaultVersion: true
+
+      - task: PowerPlatformPackSolution@0
+        displayName: 'Pack Solution from Repository'
+        inputs:
+          SolutionSourceFolder: '$(Solution.Path)'
+          SolutionOutputFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name).zip'
+
+      - task: PowerPlatformImportSolution@0
+        displayName: 'Import Solution to JIT Build Environment'
+        inputs:
+          authenticationType: 'PowerPlatformSPN'
+          PowerPlatformSPN: 'like10-jit'
+          SolutionInputFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name).zip'
+          AsyncOperation: true
+          MaxAsyncWaitTime: '240'
+
+      - task: PowerPlatformSetSolutionVersion@0
+        displayName: 'Set Solution Version'
+        inputs:
+          authenticationType: 'PowerPlatformSPN'
+          PowerPlatformSPN: 'like10-jit'
+          SolutionName: '$(Solution.Name)'
+          SolutionVersionNumber: '$(Solution.Version)'    
+
+      - task: PowerPlatformExportSolution@0
+        displayName: 'Export Managed Solution'
+        inputs:
+          authenticationType: 'PowerPlatformSPN'
+          PowerPlatformSPN: 'like10-jit'
+          SolutionName: '$(Solution.Name)'
+          SolutionOutputFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name)_managed.zip'
+          Managed: true
+
+      - publish: '$(Build.ArtifactStagingDirectory)'
+        artifact: 'PowerAppSolutions'
+      
+- stage: checker
+  dependsOn: build
+  jobs:
+  - job: run_checker
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+      - checkout: none
+      - download: current
+        artifact: 'PowerAppSolutions'
+        displayName: 'Download Solutions'
+
+      - task: PowerPlatformToolInstaller@0
+        displayName: 'Power Platform Tool Installer'
+        inputs:
+          DefaultVersion: true
+
+      - task: PowerPlatformChecker@0
+        displayName: 'Execute Power Platform Checker'
+        inputs:
+          PowerPlatformSPN: 'like10-jit'
+          FilesToAnalyze: '$(Pipeline.Workspace)\PowerAppSolutions\*.zip'
+          RuleSet: '0ad12346-e108-40b8-a956-9a8f95ea18c9'
+          ArtifactDestinationName: 'PowerPlatformChecker'
+          
+
+    
+- stage: test
+  dependsOn: checker
+  jobs:
+  - deployment: test
+    displayName: 'Deploy Test'
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'd365-test'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: none
+          - download: none            
+          - script: echo 'Deploy managed solution to Test'
+          
+
+- stage: uat
+  dependsOn: test
+  jobs:
+  - deployment: uat
+    displayName: 'Deploy to UAT'
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'd365-uat'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: none
+          - download: none
+          - script: echo 'Deploy managed solution to UAT'
+
+- stage: preprod
+  dependsOn: uat
+  jobs:
+  - deployment: preprod
+    displayName: 'Deploy to Pre-Prod'
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'd365-ppe'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: none
+          - download: current
+            artifact: 'PowerAppSolutions'
+            displayName: 'Download solutions'
+
+          - script: echo 'Deploy managed solution to pre-prod'
+          
+          - task: PowerPlatformToolInstaller@0
+            inputs:
+              DefaultVersion: true
+          - task: PowerPlatformWhoAmi@0
+            inputs:
+              authenticationType: 'PowerPlatformSPN'
+              PowerPlatformSPN: 'like10-ppe'
+          
+          - task: PowerPlatformImportSolution@0
+            inputs:
+              authenticationType: 'PowerPlatformSPN'
+              PowerPlatformSPN: 'like10-ppe'
+              SolutionInputFile: '$(Pipeline.Workspace)\PowerAppSolutions\$(Solution.Name)_managed.zip'
+              AsyncOperation: true
+              MaxAsyncWaitTime: '60'
+
+- stage: production
+  dependsOn: preprod
+  jobs:
+  - deployment: production
+    displayName: 'Deploy to Production'
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'd365-prod'  
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo 'Deploy container to prodution slot/webapp'

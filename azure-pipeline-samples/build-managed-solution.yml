@@ -1,0 +1,57 @@
+# Build managed solution from git repository
+# requires a Just-In-Time (JIT) environment in Power Apps
+# umanaged solution is imported and a managed solution
+# is exported
+# The managed solution is saved as a pipeline artifact
+#
+
+trigger:
+  - main
+  - develop
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  # Solution Details
+  Solution.Name: 'SampleApp'
+  Solution.Path: '$(Pipeline.Workspace)/s/Solution'
+
+steps:
+
+- task: PowerPlatformToolInstaller@0
+  displayName: 'Power Platform Tool Installer'
+  inputs:
+    DefaultVersion: true
+
+- task: PowerPlatformPackSolution@0
+  displayName: 'Pack Solution from Repository'
+  inputs:
+    SolutionSourceFolder: '$(Solution.Path)'
+    SolutionOutputFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name).zip'
+
+- task: PowerPlatformImportSolution@0
+  displayName: 'Import Solution to JIT Build Environment'
+  inputs:
+    authenticationType: 'PowerPlatformSPN'
+    PowerPlatformSPN: 'like10-jit'
+    SolutionInputFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name).zip'
+    AsyncOperation: true
+    MaxAsyncWaitTime: '240'
+
+- task: PowerPlatformExportSolution@0
+  displayName: 'Export Managed Solution'
+  inputs:
+    authenticationType: 'PowerPlatformSPN'
+    PowerPlatformSPN: 'like10-jit'
+    SolutionName: '$(Solution.Name)'
+    SolutionOutputFile: '$(Build.ArtifactStagingDirectory)\$(Solution.Name)_managed.zip'
+    Managed: true
+
+- task: PublishPipelineArtifact@1
+  displayName: 'Publish Artifacts managed and unmanaged solutions'
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)\'
+    artifact: 'PowerAppSolutions'
+    publishLocation: 'pipeline'
+

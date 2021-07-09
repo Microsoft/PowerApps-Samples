@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>0</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>0</isdefault>
+    <savedqueryid>{ca85ec21-a1c8-4d0a-84a9-dab8da10cd57}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="lcs_action" select="1" icon="1" preview="1">
+        <row name="result" id="lcs_activitylogid">
+          <cell name="lcs_action" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>0</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="lcs_activitylog">
+          <attribute name="lcs_activitylogid" />
+          <attribute name="lcs_action" />
+          <attribute name="createdon" />
+          <order attribute="lcs_action" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="1" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0.0.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Inactive ActivityLogs" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>
