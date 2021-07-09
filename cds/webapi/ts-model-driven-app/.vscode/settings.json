@@ -1,0 +1,19 @@
+{
+    "mocha.files.glob": "src/test/**/*.ts",
+    "mocha.requires": ["ts-node/register"],
+  
+    "mocha.env": {
+        "TS_NODE_FILES": true,
+        //"TS_NODE_TRANSPILE_ONLY": true // This is required to avoid the ambient namespace checks during mocha compilation
+    },
+    "mocha.sideBarOptions": {
+        "lens": true, 
+        "decoration": true,
+        "autoUpdateTime": 2000,
+        "showDebugTestStatus": true 
+    },
+    "mocha.coverage": {
+        "enable": false        
+      }
+
+}

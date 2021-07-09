@@ -1,0 +1,22 @@
+{
+  "name": "ts-model-driven-app",
+  "version": "1.0.0",
+  "description": "Examples of using the CDS WebApi from inside a model-driven app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.5",
+    "@types/xrm": "^9.0.7",
+    "mocha": "^5.2.0",
+    "typescript": "^3.3.1"
+  },
+  "dependencies": {
+    "ts-mocha": "^2.0.0",
+    "tslint": "^5.12.1"
+  }
+}

@@ -1,0 +1,30 @@
+﻿
+<!DOCTYPE html>
+<html lang='en' class=''>
+<head>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css'>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/mocha/4.0.1/mocha.min.css'>
+    <script src="../ClientGlobalContext.js.aspx" type="text/javascript"></script>
+</head>
+<body>
+    <div id='mocha'></div>
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/mocha/4.0.1/mocha.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/chai/4.1.2/chai.min.js'></script>
+    <script>
+
+        mocha.setup('bdd');
+
+
+    </script>
+    <!-- Load the tests -->
+    <script src="model-driven-webapi.js"></script>
+   
+    <script>
+        // Run Tests
+        mocha.grep(".").run();
+        
+    </script>
+
+</body>
+</html>
